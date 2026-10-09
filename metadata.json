@@ -1,0 +1,7 @@
+{
+  "name": "Promage - Architecture Studio Manager",
+  "description": "A comprehensive management software for architecture offices featuring multi-company support, project tracking, budgeting, and AI-driven insights.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
