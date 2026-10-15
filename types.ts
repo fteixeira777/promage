@@ -42,6 +42,7 @@ export interface TeamMember {
 }
 
 export interface Phase {
+  plannedMinutes?: number;
   id: string;
   name: string;
   value: number;
@@ -55,6 +56,8 @@ export interface Phase {
 }
 
 export interface PaymentSchedule {
+  subcontractId?: string;
+  expenseId?: string;
   id: string;
   description: string;
   direction: 'INCOME' | 'EXPENSE';
@@ -92,6 +95,7 @@ export interface ProcessDocument {
 }
 
 export interface Process {
+  timeEntries?: TimeEntry[];
   id: string;
   code: string;
   title: string;
@@ -106,6 +110,17 @@ export interface Process {
   documents: ProcessDocument[];
   payments?: PaymentSchedule[];
   sourcePortfolioId?: string;
+}
+
+export interface TimeEntry {
+  id: string;
+  processId: string;
+  phaseId?: string;
+  memberId: string;
+  date: string;
+  minutes: number;
+  description: string;
+  hourlyCost?: number | null;
 }
 
 export interface Budget {
