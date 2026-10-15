@@ -31,3 +31,11 @@ Para reportar problemas: indicar ecrã, passos, resultado esperado e observado; 
 Limites atuais: fecho manual de fases, custo horário guardado no momento do registo, saldo inicial simulado e despesas gerais pagas integralmente. Ainda não existe recuperação de palavra-passe na interface. Manter os registos habituais durante a validação.
 
 Auditoria de dependências: correções compatíveis aplicadas. Permanecem avisos nas ferramentas de compilação Tailwind 3 (braces e postcss-selector-parser); não são distribuídas no navegador. A atualização para Tailwind 4 exige validação visual própria.
+
+## Estado da alfa online
+
+Endereço: https://promage-nine.vercel.app/
+
+Site URL e Redirect URL configurados no Supabase. Publicação ligada ao ramo main no GitHub. Compilação, TypeScript e 41 testes passaram; página pública respondeu HTTP 200.
+
+Pendente antes de convidar utilizadores externos: configurar SMTP próprio no Supabase. O SMTP personalizado está desativado e o serviço predefinido só envia para endereços da equipa do projeto (https://supabase.com/docs/guides/auth/auth-smtp). Falta validar registo/confirmacão e sessão no endereço publicado com utilizador externo. Não desativar confirmação de email para contornar esta limitação.
