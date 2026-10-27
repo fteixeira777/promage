@@ -1,4 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
+import { recoveryLinkState } from './passwordRecovery';
+
+// Capture the intent before the auth client consumes and clears the URL fragment.
+export const initialAuthLink = recoveryLinkState(window.location.hash);
 
 const env = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env;
 const url = env.VITE_SUPABASE_URL?.trim();

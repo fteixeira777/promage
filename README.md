@@ -28,7 +28,7 @@ Criar conta, confirmar email e abrir a Área do gabinete para criar o gabinete. 
 
 Para reportar problemas: indicar ecrã, passos, resultado esperado e observado; evitar dados pessoais nas capturas.
 
-Limites atuais: fecho manual de fases, custo horário guardado no momento do registo, saldo inicial simulado e despesas gerais pagas integralmente. Ainda não existe recuperação de palavra-passe na interface. Manter os registos habituais durante a validação.
+Limites atuais: fecho manual de fases, custo horário guardado no momento do registo, saldo inicial simulado e despesas gerais pagas integralmente. A recuperação de palavra-passe está disponível no início de sessão; a entrega a utilizadores externos depende da configuração de SMTP. Manter os registos habituais durante a validação.
 
 Auditoria de dependências: correções compatíveis aplicadas. Permanecem avisos nas ferramentas de compilação Tailwind 3 (braces e postcss-selector-parser); não são distribuídas no navegador. A atualização para Tailwind 4 exige validação visual própria.
 
@@ -39,3 +39,5 @@ Endereço: https://promage-nine.vercel.app/
 Site URL e Redirect URL configurados no Supabase. Publicação ligada ao ramo main no GitHub. Compilação, TypeScript e 41 testes passaram; página pública respondeu HTTP 200.
 
 Pendente antes de convidar utilizadores externos: configurar SMTP próprio no Supabase. O SMTP personalizado está desativado e o serviço predefinido só envia para endereços da equipa do projeto (https://supabase.com/docs/guides/auth/auth-smtp). Falta validar registo/confirmacão e sessão no endereço publicado com utilizador externo. Não desativar confirmação de email para contornar esta limitação.
+
+Recuperação: clicar em Esqueci-me da palavra-passe, abrir o link recebido e confirmar a nova palavra-passe (mínimo 8 caracteres). O retorno usa a raiz do site, já autorizada no Supabase. Verificados 44 testes e os ecrãs de pedido/link expirado; entrega real do email e alteração de credenciais ainda por validar pelo titular da conta.

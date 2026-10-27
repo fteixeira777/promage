@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Client, Company } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, initialAuthLink } from '../lib/supabase';
+import PasswordRecovery from './PasswordRecovery';
+const recoveryKey = 'promage.passwordRecoveryUser';
+function storedRecovery() { try { return sessionStorage.getItem(recoveryKey); } catch { return null; } }
+function rememberRecovery(userId: string | null) { try { if (userId) sessionStorage.setItem(recoveryKey, userId); else sessionStorage.removeItem(recoveryKey); } catch { /* Tab storage is optional. */ } }
 import CloudPlanning, { type PlanningSection } from './CloudPlanning';
 import WorkspaceShell from './WorkspaceShell';
 import ClientPortal from './ClientPortal';
@@ -14,6 +18,8 @@ const action = 'px-4 py-3 rounded-xl bg-[#2D4E4E] text-white font-bold text-sm d
 const message = (error: unknown) => error instanceof Error ? error.message : String((error as { message?: string })?.message || 'Não foi possível concluir a operação.');
 
 export default function CloudApp({ onLocal }: { onLocal?: () => void }) {
+  const [recovering, setRecovering] = useState(() => initialAuthLink.recovery || initialAuthLink.invalid || Boolean(storedRecovery()));
+  const [recoveryUser, setRecoveryUser] = useState<string | null>(storedRecovery);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,27 +39,29 @@ export default function CloudApp({ onLocal }: { onLocal?: () => void }) {
   useEffect(() => {
     let alive = true;
     supabase!.auth.getSession().then(({ data, error }) => { if (alive) { setSession(data.session); setLoading(false); if (error) setError(error.message); } }).catch(e => { if (alive) { setError(message(e)); setLoading(false); } });
-    const { data } = supabase!.auth.onAuthStateChange((_event, next) => {
+    const { data } = supabase!.auth.onAuthStateChange((event, next) => {
+      if (event === 'PASSWORD_RECOVERY' && next) { rememberRecovery(next.user.id); setRecoveryUser(next.user.id); setRecovering(true); }
+      if (event === 'SIGNED_OUT') { rememberRecovery(null); setRecoveryUser(null); }
       setSession(next); setLoading(false);
       if (!next) { setClientMode(false); setCompany(null); setClients([]); setCompanies([]); }
     });
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
   useEffect(() => {
-    if (!session) return;
+    if (!session || recovering) return;
     let alive = true; setLoading(true); setError('');
     listWorkspaces().then(data => { if (alive) { setCompanies(data || []); if (!data?.length) setClientMode(true); } }).catch(e => { if (alive) setError(message(e)); }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [session?.user.id, refresh]);
+  }, [session?.user.id, refresh, recovering]);
   useEffect(() => {
     setClients([]); setClientForm(null); setRole('member');
-    if (!company || !session) return;
+    if (!company || !session || recovering) return;
     let alive = true; setLoading(true); setError('');
     Promise.all([listRemoteClients(company.id), workspaceRole(company.id, session.user.id)])
       .then(([data, memberRole]) => { if (alive) { setClients(data); setRole(memberRole); } })
       .catch(e => { if (alive) setError(message(e)); }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [company?.id, session?.user.id]);
+  }, [company?.id, session?.user.id, recovering]);
   const authenticate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const data = new FormData(e.currentTarget); setBusy(true); setError(''); setNotice('');
     const credentials = { email: String(data.get('email')).trim(), password: String(data.get('password')) };
@@ -84,7 +92,8 @@ export default function CloudApp({ onLocal }: { onLocal?: () => void }) {
   };
   const logout = async () => { setBusy(true); setError(''); try { const { error } = await supabase!.auth.signOut(); if (error) throw error; } catch (e) { setError(message(e)); } finally { setBusy(false); } };
   const feedback = <>{error && <p role="alert" className="bg-red-50 text-red-800 rounded-xl p-3 text-sm">{error}</p>}{notice && <p role="status" className="bg-emerald-50 text-emerald-800 rounded-xl p-3 text-sm">{notice}</p>}</>;
-  if (!session) return <div className="h-screen overflow-y-auto bg-slate-100 flex items-center justify-center p-6"><div className="bg-white border rounded-3xl p-8 w-full max-w-md space-y-5"><div className="flex items-center gap-3 text-[#2D4E4E]"><Building2/><h1 className="text-2xl font-bold">Promage</h1></div><h2 className="font-bold text-lg">{register ? 'Criar conta' : 'Entrar no gabinete'}</h2><p className="text-sm text-slate-500">Versão alfa · Gere o teu gabinete e acompanha os teus projetos.</p>{feedback}{loading ? <p role="status">A verificar sessão…</p> : <form onSubmit={authenticate} className="space-y-4"><label className="block text-sm">Email<input name="email" type="email" autoComplete="email" required className={input}/></label><label className="block text-sm">Palavra-passe<input name="password" type="password" autoComplete={register ? 'new-password' : 'current-password'} minLength={register ? 8 : undefined} required className={input}/></label><button disabled={busy} className={action + ' w-full'}>{busy ? 'A processar…' : register ? 'Criar conta' : 'Entrar'}</button></form>}<button disabled={busy} onClick={() => { setRegister(!register); setError(''); setNotice(''); }} className="text-sm underline text-[#2D4E4E]">{register ? 'Já tenho conta' : 'Ainda não tenho conta'}</button>{onLocal && <div className="border-t pt-4"><button disabled={busy} onClick={onLocal} className="text-sm underline text-slate-500">Abrir protótipo local</button></div>}</div></div>;
+  if (recovering) return <PasswordRecovery checking={loading} canReset={Boolean(session && recoveryUser === session.user.id)} invalid={initialAuthLink.invalid || (!loading && initialAuthLink.recovery && !recoveryUser)} onExit={() => { rememberRecovery(null); setRecoveryUser(null); setRecovering(false); setError(''); setNotice(''); window.history.replaceState(null, '', window.location.pathname); }} />;
+  if (!session) return <div className="h-screen overflow-y-auto bg-slate-100 flex items-center justify-center p-6"><div className="bg-white border rounded-3xl p-8 w-full max-w-md space-y-5"><div className="flex items-center gap-3 text-[#2D4E4E]"><Building2/><h1 className="text-2xl font-bold">Promage</h1></div><h2 className="font-bold text-lg">{register ? 'Criar conta' : 'Entrar no gabinete'}</h2><p className="text-sm text-slate-500">Versão alfa · Gere o teu gabinete e acompanha os teus projetos.</p>{feedback}{loading ? <p role="status">A verificar sessão…</p> : <form onSubmit={authenticate} className="space-y-4"><label className="block text-sm">Email<input name="email" type="email" autoComplete="email" required className={input}/></label><label className="block text-sm">Palavra-passe<input name="password" type="password" autoComplete={register ? 'new-password' : 'current-password'} minLength={register ? 8 : undefined} required className={input}/></label><button disabled={busy} className={action + ' w-full'}>{busy ? 'A processar…' : register ? 'Criar conta' : 'Entrar'}</button></form>}{!register && <button disabled={busy || loading} onClick={() => { setRecovering(true); setError(''); setNotice(''); }} className="block text-sm underline text-[#2D4E4E]">Esqueci-me da palavra-passe</button>}<button disabled={busy} onClick={() => { setRegister(!register); setError(''); setNotice(''); }} className="text-sm underline text-[#2D4E4E]">{register ? 'Já tenho conta' : 'Ainda não tenho conta'}</button>{onLocal && <div className="border-t pt-4"><button disabled={busy} onClick={onLocal} className="text-sm underline text-slate-500">Abrir protótipo local</button></div>}</div></div>;
   return <WorkspaceShell companyName={company?.name} email={session.user.email} role={role} clientMode={clientMode} section={activeSection==='dashboard'&&role==='member'?'alerts':activeSection} busy={busy}
     onNavigate={section => { setActiveSection(section); setNavigationRevision(r => r + 1); setError(''); }}
     onSwitchCompany={() => { setCompany(null); setActiveSection('dashboard'); setError(''); }}
